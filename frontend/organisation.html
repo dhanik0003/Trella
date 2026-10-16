@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.20.0/axios.js"></script>
+    <script src="/auth.js"></script>
+    <title>Members · Trella</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f4f6f9;
+        font:
+          16px Inter,
+          Arial;
+        color: #172b4d;
+      }
+      nav {
+        padding: 14px clamp(16px, 5vw, 54px);
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 3px 15px #172b4d15;
+      }
+      .logo {
+        height: 38px;
+      }
+      .button {
+        border: 0;
+        background: #0c66e4;
+        color: #fff;
+        border-radius: 8px;
+        padding: 10px 13px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .button:disabled,
+      .remove:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      main {
+        max-width: 1100px;
+        margin: auto;
+        padding: clamp(24px, 5vw, 54px);
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 22px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 25px;
+        box-shadow: 0 4px 14px #172b4d15;
+      }
+      h1,
+      h2 {
+        margin: 0 0 8px;
+      }
+      .sub {
+        color: #5e6c84;
+        margin: 0 0 20px;
+      }
+      .member {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        padding: 13px 0;
+        border-bottom: 1px solid #dfe1e6;
+      }
+      .remove {
+        border: 0;
+        background: #ffebe6;
+        color: #ae2a19;
+        border-radius: 7px;
+        padding: 7px 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      input {
+        width: 100%;
+        height: 45px;
+        border: 1px solid #b6c2cf;
+        border-radius: 8px;
+        padding: 0 12px;
+        font: inherit;
+      }
+      .invite {
+        width: 100%;
+        margin-top: 14px;
+      }
+      .message {
+        display: none;
+        margin-top: 14px;
+        padding: 11px;
+        border-radius: 8px;
+      }
+      .error {
+        display: block;
+        background: #ffebe6;
+        color: #ae2a19;
+      }
+      .success {
+        display: block;
+        background: #dcfff1;
+        color: #216e4e;
+      }
+      .state {
+        padding: 25px 0;
+        text-align: center;
+        color: #5e6c84;
+      }
+      @media (max-width: 700px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        .card {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <img class="logo" src="/dhaniks-trella.svg" alt="Trella" /><a
+        id="back"
+        class="button"
+        >← Back to boards</a
+      >
+    </nav>
+    <main>
+      <section class="card">
+        <h1>Organisation members</h1>
+        <p class="sub">Invite teammates and manage access.</p>
+        <div id="list" aria-live="polite">
+          <div class="state">Loading members…</div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Invite a member</h2>
+        <p class="sub">Use their existing Trella username.</p>
+        <form id="form">
+          <label for="username">Username</label><input id="username" /><button
+            id="invite"
+            class="button invite"
+          >
+            Send invitation
+          </button>
+          <div id="message" class="message" role="alert"></div>
+        </form>
+      </section>
+    </main>
+    <script>
+      const orgId = new URLSearchParams(location.search).get("orgId"),
+        list = document.getElementById("list"),
+        form = document.getElementById("form"),
+        invite = document.getElementById("invite"),
+        message = document.getElementById("message");
+      back.href = "/?orgId=" + orgId;
+      function msg(x, t = "error") {
+        message.textContent = x;
+        message.className = "message " + t;
+      }
+      function err(e, f) {
+        return e.response?.data?.message || f;
+      }
+      async function load() {
+        list.innerHTML = '<div class="state">Loading members…</div>';
+        try {
+          const r = await axios.get("/members", {
+              params: { orgId },
+              headers: { token: localStorage.getItem("token") },
+            }),
+            members = r.data.members || [];
+          if (!members.length) {
+            list.innerHTML =
+              '<div class="state">No members have been invited yet.</div>';
+            return;
+          }
+          list.replaceChildren();
+          members.forEach((x) => {
+            const row = document.createElement("div");
+            row.className = "member";
+            const n = document.createElement("span");
+            n.textContent = x.username;
+            const b = document.createElement("button");
+            b.className = "remove";
+            b.textContent = "Remove";
+            b.onclick = () => remove(x.username, b);
+            row.append(n, b);
+            list.appendChild(row);
+          });
+        } catch (e) {
+          list.innerHTML =
+            '<div class="message error" style="display:block">' +
+            err(e, "We could not load members.") +
+            "</div>";
+        }
+      }
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const memberUsername = username.value.trim();
+        if (!memberUsername) return msg("Enter a username to invite.");
+        invite.disabled = true;
+        invite.textContent = "Sending invitation…";
+        try {
+          await axios.post(
+            "/add-members-to-organisation",
+            { orgId, memberUsername },
+            { headers: { token: localStorage.getItem("token") } },
+          );
+          username.value = "";
+          msg("Member invited successfully.", "success");
+          load();
+        } catch (e) {
+          msg(err(e, "We could not send the invitation. Please try again."));
+        } finally {
+          invite.disabled = false;
+          invite.textContent = "Send invitation";
+        }
+      };
+      async function remove(memberUsername, b) {
+        const confirmed = await confirmAction(
+          "Remove member?",
+          `Remove ${memberUsername} from this organisation?`,
+          "Remove member",
+        );
+        if (!confirmed) return;
+        b.disabled = true;
+        b.textContent = "Removing…";
+        try {
+          await axios.delete("/members", {
+            data: { orgId, memberUsername },
+            headers: { token: localStorage.getItem("token") },
+          });
+          msg("Member removed.", "success");
+          load();
+        } catch (e) {
+          b.disabled = false;
+          b.textContent = "Remove";
+          msg(err(e, "We could not remove this member."));
+        }
+      }
+      load();
+    </script>
+  </body>
+</html>

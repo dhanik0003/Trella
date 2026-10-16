@@ -1,0 +1,354 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.20.0/axios.js"></script>
+    <script src="/auth.js"></script>
+    <title>Issues · Trella</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f4f6f9;
+        font:
+          16px Inter,
+          Arial;
+        color: #172b4d;
+      }
+      nav {
+        padding: 14px clamp(16px, 5vw, 54px);
+        background: #fff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 3px 15px #172b4d15;
+      }
+      .logo {
+        height: 38px;
+      }
+      .button {
+        border: 0;
+        background: #0c66e4;
+        color: #fff;
+        border-radius: 8px;
+        padding: 10px 13px;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .button:disabled,
+      .move:disabled,
+      .delete:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      .head {
+        max-width: 1400px;
+        margin: auto;
+        padding: 26px clamp(16px, 5vw, 54px) 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+      }
+      .sub {
+        margin: 6px 0;
+        color: #5e6c84;
+      }
+      .board {
+        max-width: 1400px;
+        margin: auto;
+        padding: 20px clamp(16px, 5vw, 54px) 54px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+      }
+      .column {
+        background: #fff;
+        border-radius: 14px;
+        padding: 20px;
+        min-height: 310px;
+        box-shadow: 0 4px 14px #172b4d15;
+      }
+      .column h2 {
+        margin: 0;
+        font-size: 19px;
+      }
+      .column p {
+        font-size: 13px;
+        color: #5e6c84;
+        margin: 5px 0 16px;
+      }
+      .issues {
+        display: grid;
+        gap: 12px;
+      }
+      .issue {
+        padding: 15px;
+        border-radius: 11px;
+        min-height: 125px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .up {
+        background: #ffebe6;
+      }
+      .progress {
+        background: #fff7d6;
+      }
+      .done {
+        background: #dcfff1;
+      }
+      .actions {
+        margin-top: auto;
+        display: flex;
+        gap: 8px;
+      }
+      .move,
+      .delete {
+        border: 0;
+        border-radius: 7px;
+        padding: 8px 10px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .move {
+        background: #e9f2ff;
+        color: #0c66e4;
+      }
+      .delete {
+        background: #ffebe6;
+        color: #ae2a19;
+      }
+      .state {
+        color: #5e6c84;
+        font-size: 14px;
+        padding: 14px 0;
+      }
+
+      .skeleton {
+        min-height: 125px;
+        border-radius: 11px;
+        background: linear-gradient(
+          90deg,
+          #e9edf2 25%,
+          #f5f7f9 37%,
+          #e9edf2 63%
+        );
+        background-size: 400% 100%;
+        animation: loading-shimmer 1.3s ease infinite;
+      }
+
+      @keyframes loading-shimmer {
+        0% {
+          background-position: 100% 0;
+        }
+        100% {
+          background-position: -100% 0;
+        }
+      }
+      .notice {
+        max-width: 1292px;
+        margin: 16px auto 0;
+        padding: 11px 16px;
+        border-radius: 8px;
+      }
+      .error {
+        background: #ffebe6;
+        color: #ae2a19;
+      }
+      .success {
+        background: #dcfff1;
+        color: #216e4e;
+      }
+      @media (max-width: 800px) {
+        .board {
+          grid-template-columns: 1fr;
+          padding-bottom: 24px;
+        }
+        .column {
+          min-height: 170px;
+        }
+        .head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <img class="logo" src="/dhaniks-trella.svg" alt="Trella" />
+      <div>
+        <a id="back" class="button">← Boards</a>
+        <a id="create" class="button">+ Create issue</a>
+      </div>
+    </nav>
+    <section class="head">
+      <div>
+        <h1 id="header-title">Issues</h1>
+        <p class="sub">Move work through the board as it progresses.</p>
+      </div>
+    </section>
+    <div id="notice" aria-live="polite"></div>
+    <main class="board">
+      <section class="column">
+        <h2>Up next</h2>
+        <p>Planned work that has not started.</p>
+        <div id="up" class="issues">
+          <div class="skeleton" aria-label="Loading issues"></div>
+        </div>
+      </section>
+      <section class="column">
+        <h2>In progress</h2>
+        <p>Work currently being completed.</p>
+        <div id="progress" class="issues">
+          <div class="skeleton" aria-label="Loading issues"></div>
+        </div>
+      </section>
+      <section class="column">
+        <h2>Done</h2>
+        <p>Completed work.</p>
+        <div id="done" class="issues">
+          <div class="skeleton" aria-label="Loading issues"></div>
+        </div>
+      </section>
+    </main>
+    <script>
+      const p = new URLSearchParams(location.search),
+        boardId = p.get("boardId"),
+        orgId = p.get("orgId"),
+        boardTitle = p.get("boardTitle"),
+        notice = document.getElementById("notice"),
+        cols = { "Up next": "up", "In progress": "progress", Done: "done" };
+      document.getElementById("header-title").textContent =
+        boardTitle || "Board issues";
+      back.href = "/?orgId=" + orgId;
+      create.href =
+        "/createissue?boardId=" +
+        boardId +
+        "&orgId=" +
+        orgId +
+        "&boardTitle=" +
+        encodeURIComponent(boardTitle || "");
+      function say(x, t) {
+        notice.textContent = x;
+        notice.className = "notice " + t;
+      }
+      function state(v) {
+        return v === 1
+          ? "Up next"
+          : v === 2
+            ? "In progress"
+            : v === 3
+              ? "Done"
+              : v;
+      }
+      function card(x, s) {
+        const a = document.createElement("article");
+        a.className =
+          "issue " +
+          (s === "Up next" ? "up" : s === "In progress" ? "progress" : "done");
+        const title = document.createElement("strong");
+        title.textContent = x.title;
+        const actions = document.createElement("div");
+        actions.className = "actions";
+        const b = document.createElement("button");
+        if (s === "Done") {
+          b.className = "delete";
+          b.textContent = "Delete issue";
+          b.onclick = () =>
+            update(
+              x._id,
+              "Deleted",
+              b,
+              "Delete this issue? This cannot be undone.",
+            );
+        } else {
+          const next = s === "Up next" ? "In progress" : "Done";
+          b.className = "move";
+          b.textContent =
+            s === "Up next" ? "Move to In progress →" : "Mark as done ✓";
+          b.onclick = () => update(x._id, next, b);
+        }
+        actions.appendChild(b);
+        a.append(title, actions);
+        return a;
+      }
+      async function load() {
+        Object.values(cols).forEach(
+          (id) =>
+            (document.getElementById(id).innerHTML =
+              '<div class="skeleton" aria-label="Loading issues"></div>'),
+        );
+        try {
+          const r = await axios.get("/issues", {
+              params: { boardId },
+              headers: { token: localStorage.getItem("token") },
+            }),
+            all = r.data.issuesOfBoard || [];
+          Object.entries(cols).forEach(([s, id]) => {
+            const el = document.getElementById(id),
+              items = all.filter((x) => state(x.state) === s);
+            el.replaceChildren();
+            if (!items.length)
+              el.innerHTML =
+                '<div class="state">' +
+                (!all.length && s === "Up next"
+                  ? "No issues yet. Create the first issue."
+                  : "Nothing here yet.") +
+                "</div>";
+            else items.forEach((x) => el.appendChild(card(x, s)));
+          });
+          if (!all.length) say("", "");
+        } catch (e) {
+          say(
+            e.response?.data?.message ||
+              "We could not load issues. Please try again.",
+            "error",
+          );
+        }
+      }
+      async function update(id, next, b, question) {
+        if (
+          question &&
+          !(await confirmAction("Delete issue?", question, "Delete issue"))
+        )
+          return;
+        b.disabled = true;
+        b.textContent = next === "Deleted" ? "Deleting…" : "Moving…";
+        try {
+          await axios.put(
+            "/issue",
+            { issueState: next },
+            {
+              params: { issueId: id },
+              headers: { token: localStorage.getItem("token") },
+            },
+          );
+          await load();
+          say(
+            next === "Deleted"
+              ? "Issue deleted successfully."
+              : "Issue moved to " + next + ".",
+            "success",
+          );
+        } catch (e) {
+          b.disabled = false;
+          say(
+            e.response?.data?.message || "We could not update the issue.",
+            "error",
+          );
+        }
+      }
+      load();
+    </script>
+  </body>
+</html>

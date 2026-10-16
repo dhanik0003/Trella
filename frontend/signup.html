@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.20.0/axios.js"></script>
+    <title>Sign up · Trella</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: #f4f6f9;
+        font:
+          16px Inter,
+          Arial;
+        color: #172b4d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      .card {
+        width: min(100%, 420px);
+        background: #fff;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 8px 25px #172b4d1a;
+      }
+      .logo {
+        display: block;
+        height: 40px;
+        margin: 0 auto 24px;
+      }
+      h1 {
+        font-size: 25px;
+        margin: 0 0 6px;
+      }
+      p {
+        color: #5e6c84;
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        font-size: 14px;
+        margin: 16px 0 6px;
+      }
+      input,
+      button {
+        width: 100%;
+        height: 46px;
+        border-radius: 9px;
+        font: inherit;
+      }
+      input {
+        border: 1px solid #b6c2cf;
+        padding: 0 12px;
+      }
+      input:focus {
+        outline: 3px solid #4c9aff66;
+        border-color: #0c66e4;
+      }
+      button {
+        border: 0;
+        background: #0c66e4;
+        color: #fff;
+        font-weight: 700;
+        margin-top: 20px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0055cc;
+      }
+      button:disabled {
+        background: #a5adba;
+        cursor: not-allowed;
+      }
+      .message {
+        display: none;
+        padding: 11px;
+        margin-top: 14px;
+        border-radius: 8px;
+      }
+      .error {
+        display: block;
+        background: #ffebe6;
+        color: #ae2a19;
+      }
+      .success {
+        display: block;
+        background: #dcfff1;
+        color: #216e4e;
+      }
+      .foot {
+        text-align: center;
+        font-size: 14px;
+        margin: 18px 0 0;
+      }
+      .foot a {
+        color: #0c66e4;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <img class="logo" src="/dhaniks-trella.svg" alt="Trella" />
+      <h1>Create account</h1>
+      <p>Sign up to get started.</p>
+      <form id="form" novalidate>
+        <label for="username">Username</label
+        ><input id="username" autocomplete="username" /><label for="password"
+          >Password</label
+        ><input
+          id="password"
+          type="password"
+          autocomplete="new-password"
+        /><button id="submit">Create account</button>
+        <div id="message" class="message" role="alert"></div>
+      </form>
+      <p class="foot">Already have an account? <a href="/signin">Sign in</a></p>
+    </main>
+    <script>
+      const f = document.getElementById("form"),
+        b = document.getElementById("submit"),
+        m = document.getElementById("message");
+      function msg(x, t = "error") {
+        m.textContent = x;
+        m.className = "message " + t;
+      }
+      f.onsubmit = async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("username").value.trim(),
+          password = document.getElementById("password").value;
+        if (!username || !password)
+          return msg("Enter a username and password.");
+        b.disabled = true;
+        b.textContent = "Creating account…";
+        try {
+          await axios.post("/signup", { username, password });
+          msg("Account created. Taking you to sign in…", "success");
+          setTimeout(() => (location.href = "/signin"), 600);
+        } catch (e) {
+          msg(
+            e.response?.data?.message ||
+              "We could not create your account. Please try again.",
+          );
+        } finally {
+          b.disabled = false;
+          b.textContent = "Create account";
+        }
+      };
+    </script>
+  </body>
+</html>

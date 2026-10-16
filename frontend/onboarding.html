@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.20.0/axios.js"></script>
+    <script src="/auth.js"></script>
+    <title>Choose organisation · Trella</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px;
+        display: grid;
+        place-items: center;
+        background: #f4f6f9;
+        font:
+          16px Inter,
+          Arial,
+          sans-serif;
+        color: #172b4d;
+      }
+      .page {
+        width: min(100%, 560px);
+      }
+      .logo {
+        display: block;
+        height: 42px;
+        margin: 0 auto 24px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 8px 25px #172b4d1a;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 26px;
+      }
+      .sub {
+        margin: 0 0 22px;
+        color: #5e6c84;
+      }
+      .org-list {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .org {
+        border: 1px solid #dfe1e6;
+        border-radius: 10px;
+        padding: 15px;
+        background: #fff;
+        text-align: left;
+        color: #172b4d;
+        cursor: pointer;
+        font: inherit;
+        transition: 0.18s;
+      }
+      .org:hover,
+      .org:focus-visible {
+        border-color: #0c66e4;
+        background: #e9f2ff;
+        outline: 3px solid #4c9aff55;
+      }
+      .org strong,
+      .org span {
+        display: block;
+      }
+      .org span {
+        margin-top: 4px;
+        color: #5e6c84;
+        font-size: 14px;
+      }
+      .button {
+        width: 100%;
+        height: 46px;
+        border: 0;
+        border-radius: 9px;
+        background: #0c66e4;
+        color: #fff;
+        font:
+          700 16px Inter,
+          Arial,
+          sans-serif;
+        cursor: pointer;
+      }
+      .button:hover {
+        background: #0055cc;
+      }
+      .button:disabled {
+        background: #a5adba;
+        cursor: not-allowed;
+      }
+      .secondary {
+        background: #e9f2ff;
+        color: #0c66e4;
+      }
+      .secondary:hover {
+        background: #cce0ff;
+      }
+      .hidden {
+        display: none;
+      }
+      label {
+        display: block;
+        margin: 16px 0 6px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid #b6c2cf;
+        border-radius: 9px;
+        padding: 12px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      input:focus,
+      textarea:focus {
+        outline: 3px solid #4c9aff66;
+        border-color: #0c66e4;
+      }
+      .message {
+        display: none;
+        margin-top: 14px;
+        padding: 11px;
+        border-radius: 8px;
+      }
+      .message.error {
+        display: block;
+        background: #ffebe6;
+        color: #ae2a19;
+      }
+      .message.success {
+        display: block;
+        background: #dcfff1;
+        color: #216e4e;
+      }
+      .loading,
+      .empty {
+        padding: 22px 0;
+        color: #5e6c84;
+        text-align: center;
+      }
+      .logout {
+        display: block;
+        margin: 18px auto 0;
+        border: 0;
+        background: transparent;
+        color: #44546f;
+        cursor: pointer;
+        font: inherit;
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+        .card {
+          padding: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <img class="logo" src="/dhaniks-trella.svg" alt="Trella" />
+      <section class="card">
+        <div id="chooser">
+          <h1>Choose an organisation</h1>
+          <p class="sub">
+            Open a workspace you belong to, or create a new one.
+          </p>
+          <div id="orgList" class="org-list" aria-live="polite">
+            <div class="loading">Loading organisations…</div>
+          </div>
+          <button id="showCreate" class="button secondary" type="button">
+            Create a new organisation
+          </button>
+        </div>
+        <div id="creator" class="hidden">
+          <h1 id="createHeading">Create your first organisation</h1>
+          <p class="sub">Set up a home for your boards and team.</p>
+          <form id="orgForm" novalidate>
+            <label for="orgName">Organisation name</label>
+            <input id="orgName" required />
+            <label for="orgDesc">Description</label>
+            <textarea id="orgDesc" required></textarea>
+            <button id="createButton" class="button" type="submit">
+              Create organisation
+            </button>
+            <div id="message" class="message" role="alert"></div>
+          </form>
+          <button id="backToChooser" class="logout hidden" type="button">
+            ← Back to organisations
+          </button>
+        </div>
+        <button
+          class="logout"
+          type="button"
+          onclick="
+            localStorage.removeItem('token');
+            location.href = '/signin';
+          "
+        >
+          Log out
+        </button>
+      </section>
+    </main>
+    <script>
+      const chooser = document.getElementById("chooser");
+      const creator = document.getElementById("creator");
+      const orgList = document.getElementById("orgList");
+      const showCreate = document.getElementById("showCreate");
+      const backToChooser = document.getElementById("backToChooser");
+      const form = document.getElementById("orgForm");
+      const createButton = document.getElementById("createButton");
+      const message = document.getElementById("message");
+      const orgName = document.getElementById("orgName");
+      const orgDesc = document.getElementById("orgDesc");
+
+      function showMessage(text, type = "error") {
+        message.textContent = text;
+        message.className = `message ${type}`;
+      }
+
+      function openCreator(hasOrganisations) {
+        chooser.classList.add("hidden");
+        creator.classList.remove("hidden");
+        backToChooser.classList.toggle("hidden", !hasOrganisations);
+        document.getElementById("createHeading").textContent = hasOrganisations
+          ? "Create a new organisation"
+          : "Create your first organisation";
+      }
+
+      async function loadOrganisations() {
+        try {
+          const response = await axios.get("/organisations", {
+            headers: { token: localStorage.getItem("token") },
+          });
+          const organisations = response.data.organisations || [];
+          orgList.replaceChildren();
+          if (!organisations.length) {
+            orgList.innerHTML =
+              '<div class="empty">You do not belong to an organisation yet.</div>';
+            openCreator(false);
+            return;
+          }
+          organisations.forEach((org) => {
+            const button = document.createElement("button");
+            button.className = "org";
+            button.type = "button";
+            const name = document.createElement("strong");
+            name.textContent = org.name;
+            const description = document.createElement("span");
+            description.textContent = org.desc || "Open organisation boards";
+            button.append(name, description);
+            button.onclick = () => (location.href = `/?orgId=${org._id}`);
+            orgList.appendChild(button);
+          });
+          showCreate.onclick = () => openCreator(true);
+          backToChooser.onclick = () => {
+            creator.classList.add("hidden");
+            chooser.classList.remove("hidden");
+          };
+        } catch (error) {
+          orgList.innerHTML = `<div class="message error" style="display:block">${error.response?.data?.message || "We could not load your organisations. Please try again."}</div>`;
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const name = orgName.value.trim();
+        const description = orgDesc.value.trim();
+        if (!name || !description)
+          return showMessage("Enter an organisation name and description.");
+        createButton.disabled = true;
+        createButton.textContent = "Creating organisation…";
+        try {
+          const response = await axios.post(
+            "/organisation",
+            { orgName: name, orgDesc: description },
+            { headers: { token: localStorage.getItem("token") } },
+          );
+          showMessage(
+            "Organisation created successfully. Opening your boards…",
+            "success",
+          );
+          setTimeout(
+            () => (location.href = `/?orgId=${response.data.id}`),
+            600,
+          );
+        } catch (error) {
+          showMessage(
+            error.response?.data?.message ||
+              "We could not create the organisation. Please try again.",
+          );
+        } finally {
+          createButton.disabled = false;
+          createButton.textContent = "Create organisation";
+        }
+      });
+
+      loadOrganisations();
+    </script>
+  </body>
+</html>
