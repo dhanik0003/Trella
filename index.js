@@ -1,12 +1,12 @@
 import express from "express";
 import jwt from "jsonwebtoken";
-import { authMiddleware } from "./middleware.js";
+import { authMiddleware } from "./authMiddleware.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { userModel, organisationModel, boardModel, issueModel } from "./models.js"
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
