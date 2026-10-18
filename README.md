@@ -11,6 +11,8 @@ Trella is a lightweight Trello-style task board application. Users can create ac
 - Issue creation, movement, and deletion confirmation
 - Responsive interface with loading, empty, success, and error states
 - Client-side session handling and logout
+- Password hashing with bcrypt
+- Zod validation for sign-up, sign-in, organisation, member, board, and issue input
 
 ## Requirements
 
@@ -38,14 +40,14 @@ npm install dotenv
 Create a `.env` file in the project root. Never commit this file.
 
 ```env
-MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER/trello
+MONGODB_URL=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER/trello
 JWT_SECRET=replace-with-a-long-random-secret
 ```
 
 Create a commit-safe template named `.env.example`:
 
 ```env
-MONGODB_URI=
+MONGODB_URL=
 JWT_SECRET=
 ```
 
@@ -58,15 +60,22 @@ node_modules/
 
 ## Required code configuration
 
-Load environment variables before using them. In `models.js`:
+The app loads environment variables using `dotenv`. The MongoDB connection in `models.js` uses:
 
 ```js
 import "dotenv/config";
 
-mongoose.connect(process.env.MONGODB_URI);
+mongoose.connect(process.env.MONGODB_URL);
 ```
 
-Use `process.env.JWT_SECRET` for signing tokens in `index.js` and verifying tokens in `middleware.js`.
+The authentication helper is in `authMiddleware.js` (not `middleware.js`, which is a reserved Vercel filename). Keep `JWT_SECRET` private and use the same value for signing and verifying JWTs.
+
+## Input validation and password security
+
+- Passwords are hashed with bcrypt before being stored.
+- Sign-in uses bcrypt to compare the entered password with the stored hash.
+- Zod validates usernames, passwords, organisation names/descriptions, member usernames, board titles, issue titles, and allowed issue states.
+- Invalid validated input receives an HTTP `400` response.
 
 ## Run locally
 
@@ -77,6 +86,15 @@ node index.js
 ```
 
 Then open [http://localhost:3000](http://localhost:3000).
+
+## Deploying to Vercel
+
+1. Push the repository to GitHub without committing `.env`.
+2. Import the repository at [Vercel](https://vercel.com/new) and select the **Express** preset.
+3. Add `MONGODB_URL` and `JWT_SECRET` in Vercel's Environment Variables settings for Production and Preview.
+4. Deploy and test sign-up, sign-in, organisation selection, boards, members, and issues.
+
+Do not add a `PORT` environment variable in Vercel. Vercel manages it automatically.
 
 ## Git workflow
 
@@ -105,6 +123,6 @@ frontend/       Browser pages and UI logic
 public/         Static assets and shared browser scripts
 index.js        Express server and API routes
 models.js       MongoDB/Mongoose models and connection
-middleware.js   Authentication middleware
+authMiddleware.js Authentication middleware
 changesbygpt.md Detailed record of implemented changes
 ```
